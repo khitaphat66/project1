@@ -106,3 +106,44 @@ gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 print("ขนาดภาพ grayscale:", gray_img.shape)  # ควรเป็น (224, 224)
 
 # คุณสามารถใส่โค้ดวิเคราะห์หรือโมเดลที่นี่ เช่นส่งเข้าโมเดล ML
+
+
+
+---------------------
+from picamera2 import Picamera2, Preview
+from time import sleep
+import cv2
+import numpy as np
+
+# ตั้งค่ากล้อง
+camera = Picamera2()
+camera.resolution = (224, 224)  # ขนาดภาพเล็กลง เพื่อส่งเข้าโมเดล
+
+# ตรวจสอบการตั้งค่ากล้อง
+print(f"ตั้งค่ากล้องเป็น: {camera.resolution}")
+
+# ถ่ายภาพ
+image_path = '/home/user/Downloads/eye_image.jpg'
+print("กำลังถ่ายภาพ...")
+
+camera.start_preview(Preview.QTGL)  # แสดง Preview
+camera.start()
+sleep(2)  # รอให้กล้องโฟกัส
+camera.capture_file(image_path)  # ถ่ายรูปแล้วบันทึก
+camera.stop_preview()
+
+# อ่านภาพที่ถ่ายมา
+img = cv2.imread(image_path)  # ใช้ OpenCV อ่านภาพ
+print("ขนาดรูปก่อนปรับขนาด:", img.shape)  # ดูขนาดภาพที่ถ่ายมา
+
+# ปรับขนาดภาพให้เป็น 224x224
+if img.shape[0] != 224 or img.shape[1] != 224:
+    img_resized = cv2.resize(img, (224, 224))
+    print("ขนาดรูปหลังปรับขนาด:", img_resized.shape)  # ควรเป็น (224, 224, 3)
+else:
+    img_resized = img
+    print("ขนาดรูปไม่ต้องปรับขนาด (แล้วแต่กล้อง):", img_resized.shape)
+
+# ตัวอย่างการแปลงเป็น grayscale
+gray_img = cv2.cvtColor(img_resized, cv2.COLOR_BGR2GRAY)
+print("ขนาดภาพ grayscale:", gray_img.shape)  # ควรเป็น (224, 224)
