@@ -78,7 +78,7 @@ print("ถ่ายเสร็จแล้ว บันทึกที่", ima
 -------------------------     
 from picamera2 import Picamera2, Preview
 from time import sleep
-from PIL import Image
+import cv2
 import numpy as np
 
 # ตั้งค่ากล้อง
@@ -97,15 +97,12 @@ camera.stop_preview()
 
 print(f"ถ่ายเสร็จแล้ว บันทึกที่: {image_path}")
 
-# วิเคราะภาพ: ใช้ PIL และ numpy
-img = Image.open(image_path)  # เปิดภาพที่ถ่ายมา
-img_array = np.array(img)  # แปลงเป็น numpy array
+# วิเคราะภาพ: ใช้ cv2 และ numpy
+img = cv2.imread(image_path)  # ใช้ OpenCV อ่านภาพ
+print("ขนาดรูป:", img.shape)  # ควรเป็น (224, 224, 3)
 
-# ดูขนาดของภาพ
-print("ขนาดรูป:", img_array.shape)  # ควรเป็น (224, 224, 3) หรือ (224, 224) ถ้าเป็น grayscale
-
-# ตัวอย่างการแปลงเป็น grayscale เพื่อการวิเคราะห์
-gray_img = np.mean(img_array, axis=-1)  # แปลงภาพเป็น grayscale
-print("ขนาดภาพ grayscale:", gray_img.shape)  # ควรจะเป็น (224, 224)
+# ตัวอย่างการแปลงเป็น grayscale
+gray_img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+print("ขนาดภาพ grayscale:", gray_img.shape)  # ควรเป็น (224, 224)
 
 # คุณสามารถใส่โค้ดวิเคราะห์หรือโมเดลที่นี่ เช่นส่งเข้าโมเดล ML
