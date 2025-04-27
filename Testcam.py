@@ -73,3 +73,39 @@ sleep(2)  # รอให้กล้องโฟกัส
 camera.capture(image_path)
 camera.stop_preview()
 print("ถ่ายเสร็จแล้ว บันทึกที่", image_path)
+
+
+-------------------------     
+from picamera2 import Picamera2, Preview
+from time import sleep
+from PIL import Image
+import numpy as np
+
+# ตั้งค่ากล้อง
+camera = Picamera2()
+camera.resolution = (224, 224)  # ขนาดภาพเล็กลง เพื่อส่งเข้าโมเดล
+
+# ถ่ายภาพ
+image_path = '/home/user/Downloads/eye_image.jpg'
+print("กำลังถ่ายภาพ...")
+
+camera.start_preview(Preview.QTGL)  # แสดง Preview
+camera.start()
+sleep(2)  # รอให้กล้องโฟกัส
+camera.capture_file(image_path)  # ถ่ายรูปแล้วบันทึก
+camera.stop_preview()
+
+print(f"ถ่ายเสร็จแล้ว บันทึกที่: {image_path}")
+
+# วิเคราะภาพ: ใช้ PIL และ numpy
+img = Image.open(image_path)  # เปิดภาพที่ถ่ายมา
+img_array = np.array(img)  # แปลงเป็น numpy array
+
+# ดูขนาดของภาพ
+print("ขนาดรูป:", img_array.shape)  # ควรเป็น (224, 224, 3) หรือ (224, 224) ถ้าเป็น grayscale
+
+# ตัวอย่างการแปลงเป็น grayscale เพื่อการวิเคราะห์
+gray_img = np.mean(img_array, axis=-1)  # แปลงภาพเป็น grayscale
+print("ขนาดภาพ grayscale:", gray_img.shape)  # ควรจะเป็น (224, 224)
+
+# คุณสามารถใส่โค้ดวิเคราะห์หรือโมเดลที่นี่ เช่นส่งเข้าโมเดล ML
