@@ -51,3 +51,25 @@ while True:
 # ปิดกล้องและหน้าต่างทั้งหมด
 cap.release()
 cv2.destroyAllWindows()
+
+
+
+---------------------
+from picamera import PiCamera
+from time import sleep
+from PIL import Image
+import numpy as np
+import tflite_runtime.interpreter as tflite
+
+# ตั้งค่ากล้อง
+camera = PiCamera()
+camera.resolution = (224, 224)  # ขนาดภาพเล็กลง เพื่อส่งเข้าโมเดล
+
+# ถ่ายภาพตา
+image_path = '/home/pi/eye_image.jpg'
+print("กำลังถ่ายภาพ...")
+camera.start_preview()
+sleep(2)  # รอให้กล้องโฟกัส
+camera.capture(image_path)
+camera.stop_preview()
+print("ถ่ายเสร็จแล้ว บันทึกที่", image_path)
