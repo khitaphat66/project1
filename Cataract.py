@@ -104,3 +104,77 @@ while True:
 # ปิดกล้อง
 camera.stop()
 cv2.destroyAllWindows()
+
+
+_______________________
+from picamera2 import Picamera2
+import cv2
+import numpy as np
+from time import sleep
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+
+# โหลดโมเดล
+loaded_model = load_model('/boot/overlays/cataract_model.h5')
+loaded_model.summary()
+
+# ตั้งค่ากล้อง
+camera = Picamera2()
+camera.preview_configuration.main.size = (640, 480)
+camera.configure("preview")
+camera.start()
+
+print("กดปุ่ม 'c' เพื่อถ่ายภาพและพยากรณ์, หรือกด 'q' เพื่อออก")
+
+while True:
+    frame = camera.capture_array()
+
+    # แก้สีเพี้ยน
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+    # วาดกรอบโฟกัส
+    h, w, _ = frame.shape
+    x1 = w//2 - 100
+    y1 = h//2 - 100
+    x2 = w//2 + 100
+    y2 = h//2 + 100
+    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    # แสดง preview
+    cv2.imshow("Camera Preview", frame)
+
+    key = cv2.waitKey(1) & 0xFF
+
+    if key == ord('c'):
+        # กด 'c' เพื่อถ่ายภาพ
+        capture = frame.copy()
+        img_crop = capture[y1:y2, x1:x2]
+
+        # ถ้าเป็น 4 ช่อง (BGRA) ให้แปลงเป็น 3 ช่อง (BGR)
+        if img_crop.shape[2] == 4:
+            img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
+
+        # เตรียมรูปเข้าโมเดล
+        img = cv2.resize(img_crop, (150, 150))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = img_array / 255.0
+
+        # พยากรณ์
+        prediction = loaded_model.predict(img_array)
+        print("Prediction values:", prediction)
+
+        if np.argmax(prediction) == 0:
+            result_text = "ผลลัพธ์: เป็น Cataract"
+        else:
+            result_text = "ผลลัพธ์: เป็น Normal"
+
+        print(result_text)
+
+    elif key == ord('q'):
+        # กด 'q' เพื่อออก
+        break
+
+# ปิดกล้อง
+camera.stop()
+cv2.destroyAllWindows()
