@@ -123,40 +123,37 @@ from time import sleep
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from gpiozero import LED, Button
+from signal import pause
 
-# ตั้งค่า GPIO
 button = Button(18)
 red = LED(17)
 green = LED(27)
 yellow = LED(22)
 blue = LED(5)
 
-# แสดงไฟกระพริบตอนเริ่มต้น
 for _ in range(4):
     red.on()
     green.on()
     yellow.on()
     blue.on()
     sleep(0.5)
-
+    
     red.off()
     green.off()
     yellow.off()
     blue.off()
+        
     sleep(0.5)
-
-# โหลดโมเดล
+    
 loaded_model = load_model('/boot/overlays/cataract_model.h5')
 
-# ตั้งค่ากล้อง
 camera = Picamera2()
 camera.preview_configuration.main.size = (640, 480)
 camera.configure("preview")
 camera.start()
-print("กดสวิตช์สีขาวเพื่อถ่าย หรือกด q เพื่อออก")
+print("กดปุ่มบนบอร์ดเพื่อถ่ายภาพ หรือกด 'q' บนคีย์บอร์ดเพื่อออก")
 blue.on()
 
-# ลูปหลัก
 while True:
     frame = camera.capture_array()
     frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
@@ -166,57 +163,49 @@ while True:
     x2 = w//2 + 200
     y2 = h//2 + 200
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
     cv2.imshow("Camera Preview", frame)
 
-    # อนุญาตกด q เพื่อออกจากโปรแกรม
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    # เช็คการกดปุ่ม 'q' เพื่อออก
+    key = cv2.waitKey(1) & 0xFF
+    if key == ord('q'):
         break
 
-    # รอจนกว่าจะกดปุ่มจริง
-    button.wait_for_press()
-    print("ถ่ายภาพ...")
+    # เช็ครอปุ่มจาก GPIO
+    if button.is_pressed:
+        blue.off()
+        yellow.blink(on_time=0.5, off_time=0.5)
 
-    blue.off()
-    yellow.blink(on_time=0.5, off_time=0.5)
+        capture = frame.copy()
+        img_crop = capture[y1:y2, x1:x2]
 
-    capture = frame.copy()
-    img_crop = capture[y1:y2, x1:x2]
+        if img_crop.shape[2] == 4:
+            img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
 
-    # แปลงภาพถ้ามี alpha channel
-    if img_crop.shape[2] == 4:
-        img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
+        img = cv2.resize(img_crop, (150, 150))
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0)
+        img_array = img_array / 255.0
 
-    # เตรียมภาพสำหรับโมเดล
-    img = cv2.resize(img_crop, (150, 150))
-    img_array = image.img_to_array(img)
-    img_array = np.expand_dims(img_array, axis=0)
-    img_array = img_array / 255.0
+        prediction = loaded_model.predict(img_array)
+        print("Prediction values:", prediction)
+        yellow.off()
 
-    # พยากรณ์ด้วยโมเดล
-    prediction = loaded_model.predict(img_array)
-    print("Prediction values:", prediction)
+        if np.argmax(prediction) == 0:
+            result_text = "ผลลัพธ์: เป็น Cataract"
+            red.on()
+        else:
+            result_text = "ผลลัพธ์: เป็น Normal"
+            green.on()
 
-    yellow.off()
+        print(result_text)
+        sleep(5)
+        red.off()
+        green.off()
+        blue.on()
 
-    # แสดงผลลัพธ์
-    if np.argmax(prediction) == 0:
-        result_text = "ผลลัพธ์: เป็น Cataract"
-        red.on()
-    else:
-        result_text = "ผลลัพธ์: เป็น Normal"
-        green.on()
-
-    print(result_text)
-
-    sleep(5)
-    red.off()
-    green.off()
-    blue.on()
-
-# ทำความสะอาดเมื่อจบ
 blue.off()
 red.off()
 green.off()
 camera.stop()
 cv2.destroyAllWindows()
+
