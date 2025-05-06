@@ -151,7 +151,7 @@ camera = Picamera2()
 camera.preview_configuration.main.size = (640, 480)
 camera.configure("preview")
 camera.start()
-print("กดปุ่มบนบอร์ดเพื่อถ่ายภาพ หรือกด 'q' บนคีย์บอร์ดเพื่อออก")
+print("กดสวิตช์สีขาวเพื่อถ่าย หรือกด 'q' เพื่อออก")
 blue.on()
 
 while True:
