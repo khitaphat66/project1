@@ -113,3 +113,110 @@ button.when_pressed = led.on
 button.when_released = led.off
 
 pause()
+
+
+-------------------------------
+from picamera2 import Picamera2
+import cv2
+import numpy as np
+from time import sleep
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+from gpiozero import LED, Button
+
+# ตั้งค่า GPIO
+button = Button(18)
+red = LED(17)
+green = LED(27)
+yellow = LED(22)
+blue = LED(5)
+
+# แสดงไฟกระพริบตอนเริ่มต้น
+for _ in range(4):
+    red.on()
+    green.on()
+    yellow.on()
+    blue.on()
+    sleep(0.5)
+
+    red.off()
+    green.off()
+    yellow.off()
+    blue.off()
+    sleep(0.5)
+
+# โหลดโมเดล
+loaded_model = load_model('/boot/overlays/cataract_model.h5')
+
+# ตั้งค่ากล้อง
+camera = Picamera2()
+camera.preview_configuration.main.size = (640, 480)
+camera.configure("preview")
+camera.start()
+print("กดสวิตช์สีขาวเพื่อถ่าย หรือกด q เพื่อออก")
+blue.on()
+
+# ลูปหลัก
+while True:
+    frame = camera.capture_array()
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    h, w, _ = frame.shape
+    x1 = w//2 - 200
+    y1 = h//2 - 200
+    x2 = w//2 + 200
+    y2 = h//2 + 200
+    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
+    cv2.imshow("Camera Preview", frame)
+
+    # อนุญาตกด q เพื่อออกจากโปรแกรม
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+    # รอจนกว่าจะกดปุ่มจริง
+    button.wait_for_press()
+    print("ถ่ายภาพ...")
+
+    blue.off()
+    yellow.blink(on_time=0.5, off_time=0.5)
+
+    capture = frame.copy()
+    img_crop = capture[y1:y2, x1:x2]
+
+    # แปลงภาพถ้ามี alpha channel
+    if img_crop.shape[2] == 4:
+        img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
+
+    # เตรียมภาพสำหรับโมเดล
+    img = cv2.resize(img_crop, (150, 150))
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)
+    img_array = img_array / 255.0
+
+    # พยากรณ์ด้วยโมเดล
+    prediction = loaded_model.predict(img_array)
+    print("Prediction values:", prediction)
+
+    yellow.off()
+
+    # แสดงผลลัพธ์
+    if np.argmax(prediction) == 0:
+        result_text = "ผลลัพธ์: เป็น Cataract"
+        red.on()
+    else:
+        result_text = "ผลลัพธ์: เป็น Normal"
+        green.on()
+
+    print(result_text)
+
+    sleep(5)
+    red.off()
+    green.off()
+    blue.on()
+
+# ทำความสะอาดเมื่อจบ
+blue.off()
+red.off()
+green.off()
+camera.stop()
+cv2.destroyAllWindows()
