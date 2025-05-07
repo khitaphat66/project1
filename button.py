@@ -285,15 +285,16 @@ while True:
         else:
             result_text = "ผลลัพธ์: เป็น Normal"
             green.on()
-    elif exit_button.is_pressed:
-        print("ออกจากโปรแกรม")
-        break
-
+            
         print(result_text)
         sleep(5)
         red.off()
         green.off()
         blue.on()
+        
+    elif exit_button.is_pressed:
+        print("ออกจากโปรแกรม")
+        break
 
 blue.off()
 red.off()
