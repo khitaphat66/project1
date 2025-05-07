@@ -259,13 +259,7 @@ while True:
     y2 = h//2 + 200
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.imshow("Camera Preview", frame)
-
-    # เช็คสวิตช์ออก
-    if exit_button.is_pressed:
-        print("ออกจากโปรแกรม")
-        break
-
-    # เช็คสวิตช์ถ่ายภาพ
+    
     if button.is_pressed:
         blue.off()
         yellow.blink(on_time=0.5, off_time=0.5)
@@ -291,6 +285,9 @@ while True:
         else:
             result_text = "ผลลัพธ์: เป็น Normal"
             green.on()
+    elif exit_button.is_pressed:
+        print("ออกจากโปรแกรม")
+        break
 
         print(result_text)
         sleep(5)
