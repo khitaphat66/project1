@@ -242,7 +242,7 @@ exit_but = Button(26)
 red = LED(17)
 green = LED(27)
 yellow = LED(23)
-blue = LED(24)
+blue = LED(26)
 
 # โหลดโมเดล
 loaded_model = load_model('/boot/overlays/cataract_model.h5')
