@@ -217,14 +217,14 @@ from time import sleep
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from gpiozero import LED, Button
+from signal import pause
 
-button = Button(18)        # สำหรับถ่ายภาพ
-exit_button = Button(25)   # สำหรับออกจากโปรแกรม
-
+button = Button(18)
+exit_but = Button(26)
 red = LED(17)
 green = LED(27)
-yellow = LED(22)
-blue = LED(5)
+yellow = LED(23)
+blue = LED(24)
 
 for _ in range(4):
     red.on()
@@ -236,10 +236,9 @@ for _ in range(4):
     red.off()
     green.off()
     yellow.off()
-    blue.off()
-        
+    blue.off()  
     sleep(0.5)
-
+    
 loaded_model = load_model('/boot/overlays/cataract_model.h5')
 
 camera = Picamera2()
@@ -247,6 +246,7 @@ camera.preview_configuration.main.size = (640, 480)
 camera.configure("preview")
 camera.start()
 print("กดสวิตช์สีขาวเพื่อถ่าย หรือกดสวิตช์สีเหลืองเพื่อออก")
+
 blue.on()
 
 while True:
@@ -258,7 +258,9 @@ while True:
     x2 = w//2 + 200
     y2 = h//2 + 200
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+
     cv2.imshow("Camera Preview", frame)
+    cv2.waitKey(1)
     
     if button.is_pressed:
         blue.off()
@@ -285,19 +287,23 @@ while True:
         else:
             result_text = "ผลลัพธ์: เป็น Normal"
             green.on()
-            
+
         print(result_text)
         sleep(5)
         red.off()
         green.off()
         blue.on()
         
-    elif exit_button.is_pressed:
-        print("ออกจากโปรแกรม")
+    elif exit_but.is_pressed:
+        
+        print("exit")
+        
         break
+
 
 blue.off()
 red.off()
 green.off()
 camera.stop()
 cv2.destroyAllWindows()
+
