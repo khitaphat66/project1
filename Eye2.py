@@ -198,7 +198,7 @@ while True:
     # ตรวจจับใบหน้า + ดวงตา
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
     eye_detected = False
-    eye_crop = None
+    eye_frame = None
 
     for (x, y, w, h) in faces:
         roi_gray = gray[y:y+h, x:x+w]
@@ -206,24 +206,9 @@ while True:
         for (ex, ey, ew, eh) in eyes:
             if ey + eh < h // 2 and is_valid_eye(ew, eh):
                 eye_detected = True
-
-                # คำนวณตำแหน่งดวงตาในภาพเต็ม
-                eye_x1 = x + ex
-                eye_y1 = y + ey
-                eye_x2 = eye_x1 + ew
-                eye_y2 = eye_y1 + eh
-
-                # ขยายพื้นที่รอบดวงตา
-                pad = 20
-                eye_x1 = max(0, eye_x1 - pad)
-                eye_y1 = max(0, eye_y1 - pad)
-                eye_x2 = min(frame.shape[1], eye_x2 + pad)
-                eye_y2 = min(frame.shape[0], eye_y2 + pad)
-
-                eye_crop = frame[eye_y1:eye_y2, eye_x1:eye_x2]
+                eye_frame = frame[y+ey:y+ey+eh, x+ex:x+ex+ew]  # เลือกกรอบดวงตาที่พบ
+                cv2.rectangle(frame, (x+ex, y+ey), (x+ex+ew, y+ey+eh), (0, 255, 0), 2)  # วาดกรอบสีเขียว
                 break
-        if eye_detected:
-            break
 
     cv2.imshow("Face & Eye Detection + Cataract Classification", frame)
     cv2.waitKey(1)
@@ -232,8 +217,9 @@ while True:
         blue.off()
         yellow.blink(on_time=0.5, off_time=0.5)
 
-        if eye_crop is not None:
-            img = cv2.resize(eye_crop, (150, 150))
+        if eye_frame is not None:
+            # ส่งเข้าโมเดล
+            img = cv2.resize(eye_frame, (150, 150))
             img_array = image.img_to_array(img)
             img_array = np.expand_dims(img_array, axis=0)
             img_array = img_array / 255.0
@@ -249,7 +235,7 @@ while True:
                 result_text = "ผลลัพธ์: เป็น Normal"
                 green.on()
         else:
-            result_text = "ไม่พบดวงตา: แสดงผลเป็น Normal"
+            result_text = "ไม่พบตาจริง: แสดงผลเป็น Normal"
             print("No valid eyes detected, skipping model.")
             yellow.off()
             green.on()
