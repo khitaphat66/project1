@@ -44,7 +44,8 @@ config = camera.create_preview_configuration(
 camera.configure(config)
 camera.start()
 sleep(2)
-camera.set_controls({"AwbEnable": True})
+camera.set_controls({"AwbEnable": False})  # ปิดการปรับสมดุลสีอัตโนมัติ
+camera.set_controls({"AwbRedGain": 1.0, "AwbBlueGain": 1.0})  # ปรับสมดุลสีมือ
 
 print("กดปุ่มสีขาวเพื่อถ่าย หรือปุ่มสีเหลืองเพื่อออก")
 blue.on()
@@ -56,24 +57,22 @@ def is_valid_eye(w, h):
 
 while True:
     frame = camera.capture_array("main")
-    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)  # แปลงจาก RGB เป็น BGR
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # ตรวจจับใบหน้า
+    # ตรวจจับใบหน้า + ดวงตา
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
-    for (x, y, w, h) in faces:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
-        roi_gray = gray[y:y+h, x:x+w]
-        roi_color = frame[y:y+h, x:x+w]
+    eye_detected = False
 
+    for (x, y, w, h) in faces:
+        roi_gray = gray[y:y+h, x:x+w]
         eyes = eye_cascade.detectMultiScale(roi_gray, 1.1, 3)
         for (ex, ey, ew, eh) in eyes:
             if ey + eh < h // 2 and is_valid_eye(ew, eh):
-                cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
-            else:
-                cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 0, 255), 1)
+                eye_detected = True
+                break
 
-    # วาดกรอบกลางภาพสำหรับวางตา
+    # วาดกรอบกลางภาพ
     h, w, _ = frame.shape
     x1 = w//2 - 200
     y1 = h//2 - 200
@@ -94,20 +93,27 @@ while True:
         if img_crop.shape[2] == 4:
             img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
 
-        img = cv2.resize(img_crop, (150, 150))
-        img_array = image.img_to_array(img)
-        img_array = np.expand_dims(img_array, axis=0)
-        img_array = img_array / 255.0
+        if eye_detected:
+            # ส่งเข้าโมเดล
+            img = cv2.resize(img_crop, (150, 150))
+            img_array = image.img_to_array(img)
+            img_array = np.expand_dims(img_array, axis=0)
+            img_array = img_array / 255.0
 
-        prediction = loaded_model.predict(img_array)
-        print("Prediction values:", prediction)
-        yellow.off()
+            prediction = loaded_model.predict(img_array)
+            print("Prediction values:", prediction)
+            yellow.off()
 
-        if np.argmax(prediction) == 0:
-            result_text = "ผลลัพธ์: เป็น Cataract"
-            red.on()
+            if np.argmax(prediction) == 0:
+                result_text = "ผลลัพธ์: เป็น Cataract"
+                red.on()
+            else:
+                result_text = "ผลลัพธ์: เป็น Normal"
+                green.on()
         else:
-            result_text = "ผลลัพธ์: เป็น Normal"
+            result_text = "ไม่พบตาจริง: แสดงผลเป็น Normal"
+            print("No valid eyes detected, skipping model.")
+            yellow.off()
             green.on()
 
         print(result_text)
@@ -120,7 +126,6 @@ while True:
         print("exit")
         break
 
-# ปิดการทำงาน
 blue.off()
 red.off()
 green.off()
