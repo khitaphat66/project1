@@ -51,7 +51,7 @@ import time
 
 # โหลด Haar cascades
 eye_cascade = cv2.CascadeClassifier('/home/user/haarcascades/haarcascade_eye.xml')
-face_cascade = cv2.CascadeClassifier("/home/user/haarcascades/haarcascade_frontalface_default.xml")
+face_cascade = cv2.CascadeClassifier('/home/user/haarcascades/haarcascade_frontalface_default.xml')
 
 # ตั้งค่ากล้อง
 picam2 = Picamera2()
@@ -68,7 +68,7 @@ picam2.set_controls({"AwbEnable": True})
 # ฟังก์ชันกรองดวงตา
 def is_valid_eye(w, h):
     aspect_ratio = w / h
-    return 0.5 < aspect_ratio < 2.5 and 10 < w < 150 and 10 < h < 150
+    return 0.3 < aspect_ratio < 3.5 and 5 < w < 200 and 5 < h < 200
 
 while True:
     frame = picam2.capture_array("main")
@@ -83,9 +83,9 @@ while True:
         roi_color = frame[y:y+h, x:x+w]
 
         # ตรวจจับดวงตาในใบหน้า
-        eyes = eye_cascade.detectMultiScale(roi_gray, 1.3, 5)
+        eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=3)
         for (ex, ey, ew, eh) in eyes:
-            if is_valid_eye(ew, eh):
+            if ey + eh < h // 2 and is_valid_eye(ew, eh):
                 cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 255, 0), 2)
             else:
                 cv2.rectangle(roi_color, (ex, ey), (ex+ew, ey+eh), (0, 0, 255), 1)
@@ -97,6 +97,7 @@ while True:
         break
 
 cv2.destroyAllWindows()
+
 --------------------------------------------
 from picamera2 import Picamera2
 import cv2
