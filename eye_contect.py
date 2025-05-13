@@ -110,12 +110,12 @@ from gpiozero import LED, Button
 
 # ปุ่มและ LED
 button = Button(18)        # ปุ่มถ่ายภาพ
-exit_button = Button(25)   # ปุ่มออกจากโปรแกรม
+exit_button = Button(26)   # ปุ่มออกจากโปรแกรม
 
 red = LED(17)
 green = LED(27)
 yellow = LED(22)
-blue = LED(5)
+blue = LED(25)
 
 # กระพริบ LED ตอนเริ่มต้น
 for _ in range(4):
