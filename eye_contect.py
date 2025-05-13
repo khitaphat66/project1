@@ -100,6 +100,7 @@ cv2.destroyAllWindows()
 
 --------------------------------------------
 from picamera2 import Picamera2
+from libcamera import Transform
 import cv2
 import numpy as np
 from time import sleep
@@ -107,28 +108,49 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from gpiozero import LED, Button
 
-# ปุ่ม & ไฟ
-button = Button(18)
-exit_button = Button(25)
+# ปุ่มและ LED
+button = Button(18)        # ปุ่มถ่ายภาพ
+exit_button = Button(25)   # ปุ่มออกจากโปรแกรม
+
 red = LED(17)
 green = LED(27)
 yellow = LED(22)
 blue = LED(5)
 
-# ไฟกระพริบเริ่มต้น
+# กระพริบ LED ตอนเริ่มต้น
 for _ in range(4):
-    red.on(); green.on(); yellow.on(); blue.on()
+    red.on()
+    green.on()
+    yellow.on()
+    blue.on()
     sleep(0.5)
-    red.off(); green.off(); yellow.off(); blue.off()
+    red.off()
+    green.off()
+    yellow.off()
+    blue.off()
     sleep(0.5)
 
-# โหลดโมเดลทำนายโรค
+# โหลดโมเดล Cataract
 loaded_model = load_model('/boot/overlays/cataract_model.h5')
 
-# โหลด Haar cascade สำหรับดวงตา
-eye_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+# โหลด Haar cascades
+face_cascade = cv2.CascadeClassifier('/home/user/haarcascades/haarcascade_frontalface_default.xml')
+eye_cascade = cv2.CascadeClassifier('/home/user/haarcascades/haarcascade_eye.xml')
 
-# กล้อง
+# ฟังก์ชันเช็คว่าภาพมีใบหน้าและดวงตาจริงหรือไม่
+def contains_face_and_eyes(img):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.3, minNeighbors=5)
+    for (x, y, w, h) in faces:
+        roi_gray = gray[y:y+h, x:x+w]
+        eyes = eye_cascade.detectMultiScale(roi_gray, scaleFactor=1.1, minNeighbors=3)
+        for (ex, ey, ew, eh) in eyes:
+            aspect_ratio = ew / float(eh)
+            if 0.3 < aspect_ratio < 3.5 and 5 < ew < 200 and 5 < eh < 200:
+                return True  # พบทั้งใบหน้าและดวงตาที่ดูสมเหตุสมผล
+    return False
+
+# ตั้งค่ากล้อง
 camera = Picamera2()
 camera.preview_configuration.main.size = (640, 480)
 camera.configure("preview")
@@ -147,7 +169,6 @@ while True:
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.imshow("Camera Preview", frame)
 
-    # ถ่ายภาพเมื่อกดปุ่ม
     if button.is_pressed:
         blue.off()
         yellow.blink(on_time=0.5, off_time=0.5)
@@ -155,49 +176,41 @@ while True:
         capture = frame.copy()
         img_crop = capture[y1:y2, x1:x2]
 
-        gray_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGR2GRAY)
-        eyes = eye_cascade.detectMultiScale(gray_crop, scaleFactor=1.3, minNeighbors=5)
-
-        if len(eyes) == 0:
-            print("ไม่พบดวงตาในภาพ")
-            yellow.off()
-            red.blink(on_time=0.2, off_time=0.2)
-            sleep(5)
-            red.off()
-            blue.on()
-            continue
-
-        print("พบดวงตาในภาพ กำลังวิเคราะห์...")
+        if img_crop.shape[2] == 4:
+            img_crop = cv2.cvtColor(img_crop, cv2.COLOR_BGRA2BGR)
 
         img = cv2.resize(img_crop, (150, 150))
         img_array = image.img_to_array(img)
         img_array = np.expand_dims(img_array, axis=0)
         img_array = img_array / 255.0
 
-        prediction = loaded_model.predict(img_array)
-        print("Prediction values:", prediction)
-        yellow.off()
+        # ตรวจสอบว่ามีใบหน้าและดวงตาในภาพหรือไม่
+        if contains_face_and_eyes(img):
+            prediction = loaded_model.predict(img_array)
+            print("Prediction values:", prediction)
 
-        if np.argmax(prediction) == 0:
-            result_text = "ผลลัพธ์: เป็น Cataract"
-            print(result_text)
-            red.on()
+            if np.argmax(prediction) == 0:
+                result_text = "ผลลัพธ์: เป็น Cataract"
+                red.on()
+            else:
+                result_text = "ผลลัพธ์: เป็น Normal"
+                green.on()
         else:
-            result_text = "ผลลัพธ์: เป็น Normal"
-            print(result_text)
+            result_text = "ไม่พบใบหน้าหรือดวงตา → แสดงผลว่าเป็น Normal"
             green.on()
 
+        print(result_text)
+        yellow.off()
         sleep(5)
         red.off()
         green.off()
         blue.on()
 
-    # ออกจากโปรแกรม
     elif exit_button.is_pressed:
         print("ออกจากโปรแกรม")
         break
 
-# ปิดการทำงาน
+# ปิดทุกอย่างเมื่อจบโปรแกรม
 blue.off()
 red.off()
 green.off()
