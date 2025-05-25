@@ -514,7 +514,7 @@ while True:
                 prediction = loaded_model.predict(img_array)
                 print("Prediction values:", prediction)
 
-                if np.argmax(prediction) == 0:
+                if (prediction[0, 0]) >= 0.1:
                     cataract_found = True
 
             yellow.off()
