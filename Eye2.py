@@ -523,7 +523,7 @@ while True:
                 result_text = "ผลลัพธ์: Cataract"
                 red.on()
             else:
-                result_text = "ผลลัพธ์: Normalิ"
+                result_text = "ผลลัพธ์: Normal"
                 green.on()
         else:
             result_text = "ไม่พบตาชัดเจน"
